@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taco</title>
+    
+    <link rel="icon" type="image/svg+xml" href="Taco.svg">
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: rgb(80, 117, 138);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .taco {
+            max-width: 210px;
+            width: 100%;      
+            height: auto;
+            cursor: pointer;
+            transform-origin: center center;
+            transform: translate(-2px, -4px) scale(1.0);
+            transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1); 
+            outline: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .taco:hover {
+            transform: translate(-2px, -4px) scale(1.05);
+        }
+
+        .taco:active {
+            transform: translate(-2px, -4px) scale(1.10);
+            transition: transform 0.08s ease-out; 
+        }
+    </style>
+</head>
+<body>
+
+    <img src="Taco.svg" alt="Taco" class="taco">
+
+</body>
+</html>
