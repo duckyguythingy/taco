@@ -19,33 +19,289 @@
             overflow: hidden;
             user-select: none;
             -webkit-user-select: none;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        .item {
+            position: absolute;
+            width: 100%;
+            height: auto;
+            cursor: pointer;
+            outline: none;
+            -webkit-tap-highlight-color: transparent;
+            z-index: 1;
+            transform-origin: center center;
+            transform: translate(-2px, -4px) scale(1.0);
+            transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1);
         }
 
         .taco {
             max-width: 210px;
-            width: 100%;      
-            height: auto;
-            cursor: pointer;
-            transform-origin: center center;
-            transform: translate(-2px, -4px) scale(1.0);
-            transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1); 
-            outline: none;
-            -webkit-tap-highlight-color: transparent;
         }
 
-        .taco:hover {
+        .burger {
+            max-width: 250px;
+            opacity: 1;
+            display: none;
+        }
+
+        .taco.ready:hover, 
+        .burger.ready:hover {
             transform: translate(-2px, -4px) scale(1.05);
         }
 
-        .taco:active {
+        .taco.ready:active, 
+        .burger.ready:active {
             transform: translate(-2px, -4px) scale(1.10);
             transition: transform 0.08s ease-out; 
+        }
+
+        .hand {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translate(-50%, 100%);
+            max-width: 280px;
+            width: 100%;
+            height: auto;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .popup {
+            position: fixed;
+            top: 25px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background-color: rgb(255, 238, 204);
+            border: 2px solid rgb(255, 153, 0);
+            border-radius: 12px;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.4s ease;
+        }
+
+        .popup.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .popup-text {
+            color: rgb(26, 26, 26);
+            font-weight: 600;
+            font-size: 16px;
+            white-space: nowrap;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: rgb(26, 26, 26);
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            padding: 0;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0.7;
+            transition: opacity 0.2s ease;
+        }
+
+        .close-btn:hover {
+            opacity: 1;
+        }
+
+        .hand.reach {
+            animation: reachUp 0.86s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+        }
+
+        .hand.retract {
+            animation: retractDown 1s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards;
+        }
+
+        .grabbed {
+            animation: itemRetractDown 1s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards;
+        }
+
+        .appear {
+            animation: growItem 0.86s ease-in-out forwards;
+        }
+
+        @keyframes reachUp {
+            0% { transform: translate(-50%, 100%); }
+            100% { transform: translate(-50%, -20%); }
+        }
+
+        @keyframes retractDown {
+            0% { transform: translate(-50%, -20%); }
+            100% { transform: translate(-50%, 120vh); }
+        }
+
+        @keyframes itemRetractDown {
+            0% { transform: translate(-2px, -4px) scale(1.0); }
+            100% { transform: translate(-2px, 120vh) scale(1.0); }
+        }
+
+        @keyframes growItem {
+            0% {
+                opacity: 0;
+                transform: translate(-2px, -4px) scale(0.005);
+            }
+            1% { opacity: 1; }
+            100% {
+                opacity: 1;
+                transform: translate(-2px, -4px) scale(1.0);
+            }
         }
     </style>
 </head>
 <body>
 
-    <img src="Taco.svg" alt="Taco" class="taco">
+    <div class="popup" id="popup">
+        <span class="popup-text">stop eating you fatty</span>
+        <button class="close-btn" id="close-btn">&times;</button>
+    </div>
+
+    <img src="Taco.svg" alt="Taco" class="item taco ready" id="taco">
+    <img src="hand.png" alt="Hand" class="hand" id="hand">
+    <img src="burger.png" alt="Burger" class="item burger" id="burger">
+
+    <script>
+        const taco = document.getElementById('taco');
+        const burger = document.getElementById('burger');
+        const hand = document.getElementById('hand');
+        const popup = document.getElementById('popup');
+        const closeBtn = document.getElementById('close-btn');
+        const tacoAudio = new Audio('taco.mp3');
+
+        const secretCode = ['e', 'a', 't'];
+        let keyBuffer = [];
+        let isAnimating = false;
+        let currentItem = 'taco'; 
+        let cycleCount = 0; // 0 = First Taco, 1 = Burger, 2 = Second Taco
+        let popupTimer = null;
+
+        window.addEventListener('keydown', (e) => {
+            if (isAnimating) return;
+
+            keyBuffer.push(e.key.toLowerCase());
+
+            if (keyBuffer.length > secretCode.length) {
+                keyBuffer.shift();
+            }
+
+            if (keyBuffer.join('') === secretCode.join('')) {
+                keyBuffer = [];
+
+                if (cycleCount === 2) {
+                    showErrorPopup();
+                    return;
+                }
+
+                isAnimating = true;
+                const activeElement = currentItem === 'taco' ? taco : burger;
+                activeElement.classList.remove('ready');
+
+                hand.classList.add('reach');
+
+                setTimeout(() => {
+                    hand.classList.remove('reach');
+                    hand.classList.add('retract');
+                    activeElement.classList.add('grabbed');
+
+                    if (currentItem === 'taco') {
+                        setTimeout(() => {
+                            tacoAudio.playbackRate = 1.0;
+                            tacoAudio.preservesPitch = true;
+                            tacoAudio.webkitPreservesPitch = true;
+                            tacoAudio.mozPreservesPitch = true;
+                            tacoAudio.currentTime = 0;
+                            tacoAudio.play().catch(handleAudioFallback);
+                        }, 1500); 
+                    } else {
+                        setTimeout(() => {
+                            tacoAudio.playbackRate = 0.8;
+                            tacoAudio.preservesPitch = false;
+                            tacoAudio.webkitPreservesPitch = false;
+                            tacoAudio.mozPreservesPitch = false;
+                            tacoAudio.currentTime = 0;
+                            tacoAudio.play().catch(handleAudioFallback);
+                        }, 1200); 
+                    }
+                }, 860);
+            }
+        });
+
+        function showErrorPopup() {
+            popup.classList.add('show');
+            clearTimeout(popupTimer);
+            
+            popupTimer = setTimeout(() => {
+                popup.classList.remove('show');
+            }, 5000);
+        }
+
+        closeBtn.addEventListener('click', () => {
+            popup.classList.remove('show');
+            clearTimeout(popupTimer);
+        });
+
+        tacoAudio.addEventListener('ended', () => {
+            setTimeout(switchFoodItem, 200);
+        });
+
+        function handleAudioFallback() {
+            setTimeout(switchFoodItem, 200);
+        }
+
+        function switchFoodItem() {
+            hand.classList.remove('retract');
+
+            if (currentItem === 'taco') {
+                taco.style.display = 'none';
+                taco.classList.remove('grabbed');
+
+                burger.style.display = 'block';
+                burger.classList.add('appear');
+            } else {
+                burger.style.display = 'none';
+                burger.classList.remove('grabbed');
+
+                taco.style.display = 'block';
+                taco.classList.add('appear');
+            }
+        }
+
+        taco.addEventListener('animationend', (e) => {
+            if (e.animationName === 'growItem') {
+                taco.classList.remove('appear');
+                taco.classList.add('ready');
+                currentItem = 'taco';
+                cycleCount = 2; // Second taco reached
+                isAnimating = false;
+            }
+        });
+
+        burger.addEventListener('animationend', (e) => {
+            if (e.animationName === 'growItem') {
+                burger.classList.remove('appear');
+                burger.classList.add('ready');
+                currentItem = 'burger';
+                cycleCount = 1;
+                isAnimating = false;
+            }
+        });
+    </script>
 
 </body>
 </html>
